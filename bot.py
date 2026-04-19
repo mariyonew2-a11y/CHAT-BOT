@@ -6,7 +6,6 @@ import io
 from groq import Groq
 from flask import Flask
 from threading import Thread
-from datetime import datetime
 
 # --- [ MULTI-KEY CONFIG ] ---
 KEY_POOL = [
@@ -52,33 +51,28 @@ def get_groq_response(user_id, user_input):
 
 # --- [ STEP 3: CODE TO FILE LOGIC ] ---
 def extract_and_send_code(chat_id, text):
+    # Regex to find all code blocks
     code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
     
     if code_blocks:
+        # Code ke alawa jo text bacha hai wo bhej do
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
             bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
         
         for i, (lang, code) in enumerate(code_blocks):
+            # File extension check
             ext = lang if lang else "txt"
             if "html" in ext.lower(): ext = "html"
             elif "python" in ext.lower() or "py" in ext.lower(): ext = "py"
             elif "c" == ext.lower(): ext = "c"
             
-            filename = f"Pardhan_Source_{i+1}.{ext}"
+            filename = f"BABA_GPT_Project_{i+1}.{ext}"
             
-            # --- [ SUNDAR CAPTION DESIGN ] ---
-            caption_box = (
-                f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                f"┃    📂 **PARDHAN FILE** ┃\n"
-                f"┗━━━━━━━━━━━━━━━━━━━━┛\n"
-                f"File: `{filename}`\n"
-                f"Developer: @beast_harry"
-            )
-            
+            # File buffer creation (No physical file saved on Render)
             bio = io.BytesIO(code.encode('utf-8'))
             bio.name = filename
-            bot.send_document(chat_id, bio, caption=caption_box, parse_mode="Markdown")
+            bot.send_document(chat_id, bio, caption=f"📄 **Project File:** `{filename}`\n⚡ *Created by @beast_harry*")
         return True
     return False
 
@@ -88,7 +82,7 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.0** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
         f"Greetings, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
         f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence and flawless automation.\n\n"
@@ -112,8 +106,8 @@ def clear(message):
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # --- [ SEARCHING EMOJI UPDATED ] ---
-    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
+    # Thinking with Buffer Animation
+    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
@@ -126,7 +120,7 @@ def handle_chat(message):
 
     # Check and Send File if Code exists
     if not extract_and_send_code(message.chat.id, response):
-        # Normal Text Response (No Footer)
+        # Normal Text Response (if no code found)
         try:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id, parse_mode="Markdown")
         except:
@@ -139,10 +133,7 @@ def handle_chat(message):
 @app.route('/')
 def home(): return "BABA_GPT_ONLINE"
 
-def run():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
-
 if __name__ == "__main__":
     print("✅ BABA GPT is waking up...")
-    Thread(target=run).start()
+    Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))).start()
     bot.infinity_polling()
