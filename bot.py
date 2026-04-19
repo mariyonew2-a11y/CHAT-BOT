@@ -43,10 +43,12 @@ def get_groq_response(user_id, user_input):
             chat_memories[user_id].append({"role": "assistant", "content": ans})
             return ans
         except Exception as e:
-            if "429" in str(e):
+            if "429" in str(e): # Rate limit hit
                 current_key_index = (current_key_index + 1) % len(KEY_POOL)
                 continue
-            else: return None
+            else: 
+                print(f"Key Error: {str(e)}")
+                return f"❌ AI Error: {str(e)}"
     return "exhausted"
 
 # --- [ STEP 3: CODE TO FILE LOGIC ] ---
@@ -56,7 +58,6 @@ def extract_and_send_code(chat_id, text):
     if code_blocks:
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
-            # Safety: Agar markdown fail ho toh normal text bhej de
             try:
                 bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
             except:
@@ -94,15 +95,15 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.4** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.5** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Welcome, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
-        f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence and flawless automation.\n\n"
+        f"Welcome, **{name}**! I am BABA GPT, your elite artificial intelligence companion.\n\n"
+        f"I have been engineered by **@beast\_harry** to provide you with high-level logic and automated solutions.\n\n"
         f"🚀 **Core Specialities:**\n"
-        f"• **Strategic Logic:** Solving high-complexity challenges.\n"
-        f"• **Instant Architecture:** Rapid generation of structured code.\n"
-        f"• **Full-Stack Knowledge:** Mastery over modern tech stacks.\n"
-        f"• **Adaptive Intelligence:** Evolving with every interaction.\n\n"
+        f"• **Elite Reasoning:** Strategic problem solving.\n"
+        f"• **Instant Code:** Flawless script generation into files.\n"
+        f"• **Universal Tech:** Mastery over modern development stacks.\n"
+        f"• **Beast Engine:** Powering your ideas into reality.\n\n"
         f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
@@ -114,23 +115,23 @@ def welcome(message):
 @bot.message_handler(commands=['clear'])
 def clear(message):
     chat_memories.pop(message.from_user.id, None)
-    bot.reply_to(message, "🗑️ **Memory Wiped.** Fresh session started.")
+    bot.reply_to(message, "🗑️ **Memory Wiped.** Fresh session active.")
 
 # --- [ STEP 2: PROCESSING & ERROR HANDLING ] ---
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # --- [ SEARCHING EMOJI UPDATED ] ---
+    # --- [ LENS EMOJI SEARCHING ] ---
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
     if response == "exhausted":
-        bot.edit_message_text("⚠️ **System Error:** All circuits busy. Try again later.", message.chat.id, status_msg.message_id)
+        bot.edit_message_text("⚠️ **System Error:** All AI channels are busy. Please try in 1 minute.", message.chat.id, status_msg.message_id)
         return
-    elif response is None:
-        bot.edit_message_text("❌ **Something went wrong.** Please check your prompt.", message.chat.id, status_msg.message_id)
+    elif response.startswith("❌ AI Error:"):
+        bot.edit_message_text(response, message.chat.id, status_msg.message_id)
         return
 
     # Check and Send File if Code exists
@@ -152,5 +153,6 @@ def run():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
 
 if __name__ == "__main__":
+    print("✅ BABA GPT is waking up...")
     Thread(target=run).start()
     bot.infinity_polling()
