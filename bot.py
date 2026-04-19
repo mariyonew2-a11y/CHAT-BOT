@@ -7,14 +7,18 @@ from flask import Flask
 from threading import Thread
 
 # --- [ SAMBANOVA CONFIG ] ---
+# Harry bhai, "Get Your API Key" button par click karke key yahan dalo
 SAMBA_KEY = "7bd1589a-96fc-4fe4-811b-e1e42ba2098c"
 BASE_URL = "https://api.sambanova.ai/v1/chat/completions"
+
+# Model name wahi rakha hai jo tumhare screenshot mein hai
+SELECTED_MODEL = "Meta-Llama-3.3-70B-Instruct"
 
 BOT_TOKEN = "8693996706:AAFhDMaiIPwps8woQvHSuQUpALSn5VsAR9Q"
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask('')
 
-# --- [ AI ENGINE - SAMBANOVA POWER ] ---
+# --- [ AI ENGINE ] ---
 def get_samba_response(user_input):
     headers = {
         "Authorization": f"Bearer {SAMBA_KEY}",
@@ -22,10 +26,9 @@ def get_samba_response(user_input):
     }
     
     payload = {
-        # 'llama3-1-70b' fast hai, 'llama3-1-405b' sabse smart hai
-        "model": "llama3-1-70b", 
+        "model": SELECTED_MODEL, 
         "messages": [
-            {"role": "system", "content": "You are BABA GPT by @beast_harry. You are a world-class AI. Provide logic and code in triple backticks."},
+            {"role": "system", "content": "You are BABA GPT by @beast_harry. World-class AI. Provide logic and code in triple backticks."},
             {"role": "user", "content": user_input}
         ],
         "temperature": 0.7,
@@ -39,11 +42,13 @@ def get_samba_response(user_input):
         if response.status_code == 200:
             return res_data['choices'][0]['message']['content']
         else:
-            return f"❌ Samba Error: {res_data.get('error', {}).get('message', 'Unknown Error')}"
+            # Exact error message from Samba
+            err = res_data.get('error', {}).get('message', 'Unknown Error')
+            return f"❌ Samba Error: {err}"
     except Exception as e:
         return f"❌ Connection Error: {str(e)}"
 
-# --- [ CODE EXTRACTOR & FILE LOGIC ] ---
+# --- [ CODE EXTRACTOR ] ---
 def extract_and_send_code(chat_id, text):
     code_blocks = re.findall(r'```(\w+)?[\s\n]*([\s\S]*?)```', text)
     if code_blocks:
@@ -71,18 +76,17 @@ def extract_and_send_code(chat_id, text):
         return True
     return False
 
-# --- [ HANDLERS ] ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.8** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.9** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Greetings! I am BABA GPT, powered by SambaNova's Elite Engine.\n\n"
+        f"Greetings! I am BABA GPT, powered by SambaNova's Llama-4 Engine.\n\n"
         f"🚀 **Specialities:**\n"
-        f"• **Hacker Logic:** Advanced C and Python solutions.\n"
-        f"• **Instant Files:** Code delivered as downloadable source.\n"
-        f"• **High Limits:** Optimized for long-range performance.\n\n"
+        f"• **Llama-4 Power:** Next-gen reasoning.\n"
+        f"• **Instant Files:** Code delivered as source.\n"
+        f"• **Zero Memory:** Maximum token efficiency.\n\n"
         f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
