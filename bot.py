@@ -26,7 +26,7 @@ chat_memories = {}
 def get_groq_response(user_id, user_input):
     global current_key_index
     if user_id not in chat_memories:
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a world-class AI developed by @beast_harry. You provide top-tier logic and code."}]
+        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a world-class AI developed by @beast_harry. You MUST provide all code inside triple backticks."}]
     
     chat_memories[user_id].append({"role": "user", "content": user_input})
     
@@ -51,28 +51,40 @@ def get_groq_response(user_id, user_input):
 
 # --- [ STEP 3: CODE TO FILE LOGIC ] ---
 def extract_and_send_code(chat_id, text):
-    # Regex to find all code blocks
     code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
     
     if code_blocks:
-        # Code ke alawa jo text bacha hai wo bhej do
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
-            bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
+            # Safety: Agar markdown fail ho toh normal text bhej de
+            try:
+                bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
+            except:
+                bot.send_message(chat_id, f"🤖 BABA GPT Response:\n\n{clean_text}")
         
         for i, (lang, code) in enumerate(code_blocks):
-            # File extension check
             ext = lang if lang else "txt"
             if "html" in ext.lower(): ext = "html"
             elif "python" in ext.lower() or "py" in ext.lower(): ext = "py"
             elif "c" == ext.lower(): ext = "c"
             
-            filename = f"BABA_GPT_Project_{i+1}.{ext}"
+            filename = f"Pardhan_Source_{i+1}.{ext}"
             
-            # File buffer creation (No physical file saved on Render)
+            # --- [ SUNDAR CAPTION DESIGN ] ---
+            caption_box = (
+                f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                f"┃    📂 **PARDHAN FILE** ┃\n"
+                f"┗━━━━━━━━━━━━━━━━━━━━┛\n"
+                f"File: `{filename}`\n"
+                f"Developer: @beast_harry"
+            )
+            
             bio = io.BytesIO(code.encode('utf-8'))
             bio.name = filename
-            bot.send_document(chat_id, bio, caption=f"📄 **Project File:** `{filename}`\n⚡ *Created by @beast_harry*")
+            try:
+                bot.send_document(chat_id, bio, caption=caption_box, parse_mode="Markdown")
+            except:
+                bot.send_document(chat_id, bio, caption=caption_box)
         return True
     return False
 
@@ -82,19 +94,22 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.4** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Greetings, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
+        f"Welcome, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
         f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence and flawless automation.\n\n"
-        f"🚀 **Core Intelligence:**\n"
-        f"• **Advanced Logic:** Capable of solving high-level problems.\n"
-        f"• **Instant Code:** Delivers error-free scripts as downloadable files.\n"
-        f"• **System Mastery:** Deep understanding of Python, C, and Web Arch.\n"
-        f"• **Speed Optimized:** Powered by 4-Key Rotation for zero downtime.\n\n"
-        f"┃ *Developed with passion by @beast\_harry* ┃\n"
+        f"🚀 **Core Specialities:**\n"
+        f"• **Strategic Logic:** Solving high-complexity challenges.\n"
+        f"• **Instant Architecture:** Rapid generation of structured code.\n"
+        f"• **Full-Stack Knowledge:** Mastery over modern tech stacks.\n"
+        f"• **Adaptive Intelligence:** Evolving with every interaction.\n\n"
+        f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
-    bot.reply_to(message, design, parse_mode="Markdown")
+    try:
+        bot.reply_to(message, design, parse_mode="Markdown")
+    except:
+        bot.reply_to(message, design)
 
 @bot.message_handler(commands=['clear'])
 def clear(message):
@@ -106,8 +121,8 @@ def clear(message):
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # Thinking with Buffer Animation
-    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Thinking...**", parse_mode="Markdown")
+    # --- [ SEARCHING EMOJI UPDATED ] ---
+    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
@@ -120,7 +135,7 @@ def handle_chat(message):
 
     # Check and Send File if Code exists
     if not extract_and_send_code(message.chat.id, response):
-        # Normal Text Response (if no code found)
+        # Normal Text Response (No Footer)
         try:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id, parse_mode="Markdown")
         except:
@@ -133,7 +148,9 @@ def handle_chat(message):
 @app.route('/')
 def home(): return "BABA_GPT_ONLINE"
 
+def run():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
+
 if __name__ == "__main__":
-    print("✅ BABA GPT is waking up...")
-    Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))).start()
+    Thread(target=run).start()
     bot.infinity_polling()
