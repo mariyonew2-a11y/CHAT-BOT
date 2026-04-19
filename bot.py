@@ -7,7 +7,7 @@ from groq import Groq
 from flask import Flask
 from threading import Thread
 
-# --- [ CONFIG ] ---
+# --- [ MULTI-KEY CONFIG ] ---
 KEY_POOL = [
     "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",
     "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",
@@ -48,7 +48,8 @@ def safe_send(chat_id, text, bio=None, filename=None):
 def get_groq_response(user_id, user_input):
     global current_key_index
     if user_id not in chat_memories:
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT by @beast_harry. Elite AI. ALWAYS put code inside triple backticks (```) so I can convert it to a file."}]
+        # AI ko force karna taaki Triple Backticks hamesha use kare
+        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT by @beast_harry. CRITICAL: You MUST wrap all code inside triple backticks (```). Even if the code is short. Provide complete logic."}]
     
     chat_memories[user_id].append({"role": "user", "content": user_input})
     
@@ -71,8 +72,9 @@ def get_groq_response(user_id, user_input):
             else: return None
     return "exhausted"
 
-# --- [ CODE EXTRACTOR ] ---
+# --- [ CODE EXTRACTOR LOGIC ] ---
 def extract_and_send_code(chat_id, text):
+    # Flexible regex to catch blocks even with spaces
     code_blocks = re.findall(r'```(\w+)?[\s\n]*([\s\S]*?)```', text)
     
     if code_blocks:
@@ -81,12 +83,12 @@ def extract_and_send_code(chat_id, text):
             safe_send(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}")
         
         for i, (lang, code) in enumerate(code_blocks):
-            # Extension detection
+            # Auto-detect extension
             lang = lang.strip().lower() if lang else ""
-            if "html" in lang or "html" in code[:100].lower(): ext = "html"
+            if "html" in lang or "<html" in code[:100].lower(): ext = "html"
             elif "py" in lang or "import" in code[:100].lower(): ext = "py"
+            elif "css" in lang or "style" in code[:100].lower(): ext = "css"
             elif "c" == lang or "#include" in code[:100].lower(): ext = "c"
-            elif "css" in lang: ext = "css"
             else: ext = lang if lang else "txt"
             
             filename = f"Pardhan_Source_{i+1}.{ext}"
@@ -102,14 +104,14 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.4** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.5** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Welcome, **{name}**! I am BABA GPT, an elite artificial intelligence designed for precision and power.\n\n"
+        f"Welcome, **{name}**! I am BABA GPT, your premium AI assistant engineered for high-level precision.\n\n"
         f"🚀 **Core Specialities:**\n"
-        f"• **Strategic Logic:** Solving high-complexity challenges.\n"
-        f"• **Instant Architecture:** Rapid generation of structured code.\n"
-        f"• **Full-Stack Knowledge:** Mastery over modern tech stacks.\n"
-        f"• **Adaptive Intelligence:** Evolving with every interaction.\n\n"
+        f"• **Strategic Logic:** Solving complex challenges.\n"
+        f"• **Instant Architecture:** Generating clean source code.\n"
+        f"• **Full-Stack Mastery:** Expert in modern tech ecosystems.\n"
+        f"• **Adaptive Intelligence:** Learning through every interaction.\n\n"
         f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
@@ -118,26 +120,29 @@ def welcome(message):
 @bot.message_handler(commands=['clear'])
 def clear(message):
     chat_memories.pop(message.from_user.id, None)
-    safe_send(message.chat.id, "🗑️ **Memory Cleaned.** New session active.")
+    safe_send(message.chat.id, "🗑️ **Memory Wiped.** Ready for a fresh start.")
 
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    # Lens emoji Search status
+    
+    # Searching Status with Lens Emoji
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
     if response == "exhausted":
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Please try in a bit.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Please retry soon.")
         return
     elif response is None:
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Error:** Connection lost.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Connection Error.**")
         return
 
+    # Check for code and send files
     if not extract_and_send_code(message.chat.id, response):
         safe_edit(message.chat.id, status_msg.message_id, response)
     else:
+        # Code send ho gaya, toh searching delete kar do
         bot.delete_message(message.chat.id, status_msg.message_id)
 
 @app.route('/')
