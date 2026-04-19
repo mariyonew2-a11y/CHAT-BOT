@@ -9,7 +9,7 @@ from threading import Thread
 
 # --- [ SINGLE API CONFIG ] ---
 # Harry bhai, apni SambaNova key yahan dalo
-SAMBA_KEY = "f6e7105e-c05b-4bf6-adbe-3184ff33b1fe"
+SAMBA_KEY = "e15244fc-ca6f-449e-99a1-49e119ceccca"
 BASE_URL = "https://api.sambanova.ai/v1/chat/completions"
 SELECTED_MODEL = "Meta-Llama-3.3-70B-Instruct"
 
