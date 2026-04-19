@@ -22,7 +22,7 @@ app = Flask('')
 
 chat_memories = {}
 
-# --- [ SAFE HELPERS ] ---
+# --- [ STABILITY HELPERS ] ---
 def safe_edit(chat_id, message_id, text):
     try:
         bot.edit_message_text(text, chat_id, message_id, parse_mode="Markdown")
@@ -48,8 +48,7 @@ def safe_send(chat_id, text, bio=None, filename=None):
 def get_groq_response(user_id, user_input):
     global current_key_index
     if user_id not in chat_memories:
-        # AI ko force kiya hai code blocks use karne ke liye
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT by @beast_harry. CRITICAL: Always provide actual code inside triple backticks (```). Do not just list filenames. If the user asks for a website, provide complete HTML, CSS, and JS code blocks."}]
+        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT by @beast_harry. Elite AI. ALWAYS put code inside triple backticks (```) so I can convert it to a file."}]
     
     chat_memories[user_id].append({"role": "user", "content": user_input})
     
@@ -72,28 +71,25 @@ def get_groq_response(user_id, user_input):
             else: return None
     return "exhausted"
 
-# --- [ IMPROVED CODE EXTRACTOR ] ---
+# --- [ CODE EXTRACTOR ] ---
 def extract_and_send_code(chat_id, text):
-    # Regex thoda aur flexible banaya hai
     code_blocks = re.findall(r'```(\w+)?[\s\n]*([\s\S]*?)```', text)
     
     if code_blocks:
-        # Text bhej do jo code ke baahar hai
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
             safe_send(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}")
         
         for i, (lang, code) in enumerate(code_blocks):
-            # Extension detection logic
+            # Extension detection
             lang = lang.strip().lower() if lang else ""
-            if "html" in lang or "html" in code[:50].lower(): ext = "html"
-            elif "css" in lang or "style" in code[:50].lower(): ext = "css"
-            elif "py" in lang or "import" in code[:50]: ext = "py"
-            elif "js" in lang or "script" in code[:50]: ext = "js"
+            if "html" in lang or "html" in code[:100].lower(): ext = "html"
+            elif "py" in lang or "import" in code[:100].lower(): ext = "py"
+            elif "c" == lang or "#include" in code[:100].lower(): ext = "c"
+            elif "css" in lang: ext = "css"
             else: ext = lang if lang else "txt"
             
             filename = f"Pardhan_Source_{i+1}.{ext}"
-            
             bio = io.BytesIO(code.encode('utf-8'))
             bio.name = filename
             safe_send(chat_id, "", bio=bio, filename=filename)
@@ -106,7 +102,7 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.3** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.4** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
         f"Welcome, **{name}**! I am BABA GPT, an elite artificial intelligence designed for precision and power.\n\n"
         f"🚀 **Core Specialities:**\n"
@@ -127,15 +123,16 @@ def clear(message):
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
+    # Lens emoji Search status
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
     if response == "exhausted":
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Please try again in a minute.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Please try in a bit.")
         return
     elif response is None:
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Connection Error:** Groq API didn't respond.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Error:** Connection lost.")
         return
 
     if not extract_and_send_code(message.chat.id, response):
