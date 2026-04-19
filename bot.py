@@ -7,6 +7,7 @@ from groq import Groq
 from flask import Flask
 from threading import Thread
 
+# --- [ CONFIG ] ---
 KEY_POOL = [
     "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",
     "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",
@@ -21,10 +22,11 @@ app = Flask('')
 
 chat_memories = {}
 
+# --- [ AI ENGINE ] ---
 def get_groq_response(user_id, user_input):
     global current_key_index
     if user_id not in chat_memories:
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a premium AI engineered by @beast_harry. You provide sharp, elite-level responses."}]
+        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a premium AI engineered by @beast_harry. You provide elite-level intelligence."}]
     
     chat_memories[user_id].append({"role": "user", "content": user_input})
     
@@ -47,6 +49,7 @@ def get_groq_response(user_id, user_input):
             else: return None
     return "exhausted"
 
+# --- [ STEP 4: CODE TO FILE LOGIC ] ---
 def extract_and_send_code(chat_id, text):
     code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
     
@@ -61,8 +64,9 @@ def extract_and_send_code(chat_id, text):
             elif "py" in ext.lower(): ext = "py"
             elif "c" == ext.lower(): ext = "c"
             
-            filename = f"Pardhan_Source_{i+1}.{ext}"
+            filename = f"Pardhan_Project_{i+1}.{ext}"
             
+            # File Caption Box
             caption_box = (
                 f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
                 f"┃    📂 **PARDHAN FILE** ┃\n"
@@ -77,6 +81,7 @@ def extract_and_send_code(chat_id, text):
         return True
     return False
 
+# --- [ STEP 1: POLISHED START COMMAND ] ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     name = message.from_user.first_name
@@ -98,23 +103,26 @@ def welcome(message):
 @bot.message_handler(commands=['clear'])
 def clear(message):
     chat_memories.pop(message.from_user.id, None)
-    bot.reply_to(message, "🗑️ **Memory Cleaned.** New session is active.")
+    bot.reply_to(message, "🗑️ **Memory Cleaned.** New session started.")
 
+# --- [ STEP 2 & 3: CLEAN CHAT & SEARCH ] ---
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
+    # Lens emoji Search status
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
     if response == "exhausted":
-        bot.edit_message_text("❌ **Service Busy:** Please retry in a moment.", message.chat.id, status_msg.message_id)
+        bot.edit_message_text("❌ **Service Busy:** All API keys are at limit. Try in a bit.", message.chat.id, status_msg.message_id)
         return
     elif response is None:
-        bot.edit_message_text("❌ **Something went wrong.** Try again.", message.chat.id, status_msg.message_id)
+        bot.edit_message_text("❌ **Something went wrong.** Connection interrupted.", message.chat.id, status_msg.message_id)
         return
 
+    # Process files or normal text (No footers added here)
     if not extract_and_send_code(message.chat.id, response):
         try:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id, parse_mode="Markdown")
@@ -127,5 +135,6 @@ def handle_chat(message):
 def home(): return "BABA_GPT_ONLINE"
 
 if __name__ == "__main__":
+    print("✅ BABA GPT is waking up...")
     Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))).start()
     bot.infinity_polling()
