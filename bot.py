@@ -8,7 +8,7 @@ from threading import Thread
 from duckduckgo_search import DDGS # Real-time search ke liye
 
 # --- [ CONFIGURATION ] ---
-SAMBA_KEY = "YAHAN_APNI_SAMBANOVA_KEY_DALO"
+SAMBA_KEY = "7bd1589a-96fc-4fe4-811b-e1e42ba2098c"
 BASE_URL = "https://api.sambanova.ai/v1/chat/completions"
 SELECTED_MODEL = "Meta-Llama-3.3-70B-Instruct"
 
