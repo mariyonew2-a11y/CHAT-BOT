@@ -3,57 +3,48 @@ import os
 import time
 import re
 import io
-from groq import Groq
+import requests
 from flask import Flask
 from threading import Thread
 
-# --- [ MULTI-KEY CONFIG ] ---
-KEY_POOL = [
-    "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",
-    "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",
-    "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",
-    "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"
-]
-current_key_index = 0
+# --- [ HAPUPPY CONFIG ] ---
+# Harry bhai, tumhari key yahan set kar di hai
+HAPUPPY_KEY = "sk-hapuppy-yiRDDBQsvG95vbX4MQJqjHdewyM0klOl2TDCujqED82J1VZR"
+BASE_URL = "https://api.hapuppy.com/v1/chat/completions"
 
 BOT_TOKEN = "8693996706:AAFhDMaiIPwps8woQvHSuQUpALSn5VsAR9Q"
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask('')
 
-chat_memories = {}
+# --- [ AI ENGINE - ZERO MEMORY ] ---
+def get_hapuppy_response(user_input):
+    headers = {
+        "Authorization": f"Bearer {HAPUPPY_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    # Zero Memory Logic: Sirf current message bhej rahe hain
+    payload = {
+        "model": "gpt-4o-mini", # Ye model fast hai aur credits bachata hai
+        "messages": [
+            {"role": "system", "content": "You are BABA GPT by @beast_harry. Always wrap code in triple backticks."},
+            {"role": "user", "content": user_input}
+        ],
+        "temperature": 0.6
+    }
 
-# --- [ AI ENGINE WITH ROTATION ] ---
-def get_groq_response(user_id, user_input):
-    global current_key_index
-    if user_id not in chat_memories:
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a world-class AI developed by @beast_harry. You MUST provide all code inside triple backticks."}]
-    
-    chat_memories[user_id].append({"role": "user", "content": user_input})
-    
-    for _ in range(len(KEY_POOL)):
-        try:
-            client = Groq(api_key=KEY_POOL[current_key_index])
-            completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=chat_memories[user_id],
-                temperature=0.6,
-                max_tokens=4000
-            )
-            ans = completion.choices[0].message.content
-            chat_memories[user_id].append({"role": "assistant", "content": ans})
-            return ans
-        except Exception as e:
-            if "429" in str(e): # Rate limit hit
-                current_key_index = (current_key_index + 1) % len(KEY_POOL)
-                continue
-            else: 
-                print(f"Key Error: {str(e)}")
-                return f"❌ AI Error: {str(e)}"
-    return "exhausted"
+    try:
+        response = requests.post(BASE_URL, headers=headers, json=payload, timeout=30)
+        res_data = response.json()
+        return res_data['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"API Error: {str(e)}")
+        return f"❌ AI Error: Check Hapuppy Dashboard or Credits."
 
 # --- [ STEP 3: CODE TO FILE LOGIC ] ---
 def extract_and_send_code(chat_id, text):
-    code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
+    # Flexible regex to catch blocks
+    code_blocks = re.findall(r'```(\w+)?[\s\n]*([\s\S]*?)```', text)
     
     if code_blocks:
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
@@ -64,10 +55,10 @@ def extract_and_send_code(chat_id, text):
                 bot.send_message(chat_id, f"🤖 BABA GPT Response:\n\n{clean_text}")
         
         for i, (lang, code) in enumerate(code_blocks):
-            ext = lang if lang else "txt"
-            if "html" in ext.lower(): ext = "html"
-            elif "python" in ext.lower() or "py" in ext.lower(): ext = "py"
-            elif "c" == ext.lower(): ext = "c"
+            ext = lang.strip().lower() if lang else "txt"
+            if "html" in ext: ext = "html"
+            elif "py" in ext: ext = "py"
+            elif "c" == ext: ext = "c"
             
             filename = f"Pardhan_Source_{i+1}.{ext}"
             
@@ -89,21 +80,19 @@ def extract_and_send_code(chat_id, text):
         return True
     return False
 
-# --- [ STEP 1: START COMMAND DESIGN ] ---
+# --- [ STEP 1: START COMMAND ] ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.5** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.7** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Welcome, **{name}**! I am BABA GPT, your elite artificial intelligence companion.\n\n"
-        f"I have been engineered by **@beast\_harry** to provide you with high-level logic and automated solutions.\n\n"
-        f"🚀 **Core Specialities:**\n"
-        f"• **Elite Reasoning:** Strategic problem solving.\n"
-        f"• **Instant Code:** Flawless script generation into files.\n"
-        f"• **Universal Tech:** Mastery over modern development stacks.\n"
-        f"• **Beast Engine:** Powering your ideas into reality.\n\n"
+        f"Welcome, **{name}**! I am BABA GPT, powered by the Beast Engine.\n\n"
+        f"🚀 **Capabilities:**\n"
+        f"• **Instant Logic:** Optimized for zero-latency response.\n"
+        f"• **File Delivery:** Automated source code extraction.\n"
+        f"• **Token Saver:** Memory-free mode for unlimited chat.\n\n"
         f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
@@ -112,29 +101,21 @@ def welcome(message):
     except:
         bot.reply_to(message, design)
 
-@bot.message_handler(commands=['clear'])
-def clear(message):
-    chat_memories.pop(message.from_user.id, None)
-    bot.reply_to(message, "🗑️ **Memory Wiped.** Fresh session active.")
-
-# --- [ STEP 2: PROCESSING & ERROR HANDLING ] ---
+# --- [ STEP 2: CHAT HANDLER ] ---
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # --- [ LENS EMOJI SEARCHING ] ---
+    # 🔍 Lens emoji searching status
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
-    response = get_groq_response(message.from_user.id, message.text)
+    response = get_hapuppy_response(message.text)
     
-    if response == "exhausted":
-        bot.edit_message_text("⚠️ **System Error:** All AI channels are busy. Please try in 1 minute.", message.chat.id, status_msg.message_id)
-        return
-    elif response.startswith("❌ AI Error:"):
+    if response.startswith("❌ AI Error:"):
         bot.edit_message_text(response, message.chat.id, status_msg.message_id)
         return
 
-    # Check and Send File if Code exists
+    # Check for Code and send files
     if not extract_and_send_code(message.chat.id, response):
         # Normal Text Response (No Footer)
         try:
@@ -142,7 +123,7 @@ def handle_chat(message):
         except:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id)
     else:
-        # Code bhej diya gaya hai, thinking message hata do
+        # Code bhej diya gaya hai, toh status delete kar do
         bot.delete_message(message.chat.id, status_msg.message_id)
 
 # --- [ SERVER LOGIC ] ---
@@ -153,6 +134,6 @@ def run():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))
 
 if __name__ == "__main__":
-    print("✅ BABA GPT is waking up...")
+    print("✅ BABA GPT is waking up with Hapuppy...")
     Thread(target=run).start()
     bot.infinity_polling()
