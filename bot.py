@@ -79,7 +79,7 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃        ⚡ **BABA GPT v5.0** ⚡        ┃\n"
+        f"┃        ⚡ **BABA GPT** ⚡        ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
         f"Greetings, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
         f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence and flawless automation.\n\n"
@@ -88,7 +88,6 @@ def welcome(message):
         f"• **Instant Code:** Delivers error-free scripts as downloadable files.\n"
         f"• **System Mastery:** Deep understanding of Python, C, and Web Arch.\n"
         f"• **Speed Optimized:** Powered by SambaNova for zero downtime.\n\n"
-        f"┃ *Developed with passion by @beast\_harry* ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     bot.reply_to(message, design, parse_mode="Markdown")
@@ -103,7 +102,7 @@ def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
     
     # Thinking with Buffer Animation
-    status_msg = bot.reply_to(message, "🔄 **BABA GPT is Thinking...**", parse_mode="Markdown")
+    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
