@@ -22,30 +22,34 @@ app = Flask('')
 
 chat_memories = {}
 
-# --- [ SAFE SEND/EDIT HELPER ] ---
-def safe_edit(chat_id, message_id, text, parse_mode="Markdown"):
+# --- [ SAFE HELPERS ] ---
+def safe_edit(chat_id, message_id, text):
     try:
-        bot.edit_message_text(text, chat_id, message_id, parse_mode=parse_mode)
+        bot.edit_message_text(text, chat_id, message_id, parse_mode="Markdown")
     except:
-        try:
-            bot.edit_message_text(text, chat_id, message_id, parse_mode=None)
-        except: pass
+        bot.edit_message_text(text, chat_id, message_id, parse_mode=None)
 
-def safe_send(chat_id, text, parse_mode="Markdown", caption=None, bio=None):
+def safe_send(chat_id, text, bio=None, filename=None):
     try:
         if bio:
-            return bot.send_document(chat_id, bio, caption=text, parse_mode=parse_mode)
-        return bot.send_message(chat_id, text, parse_mode=parse_mode)
+            caption_box = (
+                f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
+                f"┃    📂 **PARDHAN FILE** ┃\n"
+                f"┗━━━━━━━━━━━━━━━━━━━━┛\n"
+                f"File: `{filename}`\n"
+                f"Developer: @beast_harry"
+            )
+            return bot.send_document(chat_id, bio, caption=caption_box, parse_mode="Markdown")
+        return bot.send_message(chat_id, text, parse_mode="Markdown")
     except:
-        if bio:
-            return bot.send_document(chat_id, bio, caption=text, parse_mode=None)
         return bot.send_message(chat_id, text, parse_mode=None)
 
 # --- [ AI ENGINE ] ---
 def get_groq_response(user_id, user_input):
     global current_key_index
     if user_id not in chat_memories:
-        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT, a premium AI engineered by @beast_harry. Provide elite and high-quality responses."}]
+        # AI ko force kiya hai code blocks use karne ke liye
+        chat_memories[user_id] = [{"role": "system", "content": "You are BABA GPT by @beast_harry. CRITICAL: Always provide actual code inside triple backticks (```). Do not just list filenames. If the user asks for a website, provide complete HTML, CSS, and JS code blocks."}]
     
     chat_memories[user_id].append({"role": "user", "content": user_input})
     
@@ -68,33 +72,31 @@ def get_groq_response(user_id, user_input):
             else: return None
     return "exhausted"
 
-# --- [ FILE HANDLER ] ---
+# --- [ IMPROVED CODE EXTRACTOR ] ---
 def extract_and_send_code(chat_id, text):
-    code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
+    # Regex thoda aur flexible banaya hai
+    code_blocks = re.findall(r'```(\w+)?[\s\n]*([\s\S]*?)```', text)
     
     if code_blocks:
+        # Text bhej do jo code ke baahar hai
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
             safe_send(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}")
         
         for i, (lang, code) in enumerate(code_blocks):
-            ext = lang.strip() if lang else "txt"
-            if "html" in ext.lower(): ext = "html"
-            elif "py" in ext.lower(): ext = "py"
-            elif "c" == ext.lower(): ext = "c"
+            # Extension detection logic
+            lang = lang.strip().lower() if lang else ""
+            if "html" in lang or "html" in code[:50].lower(): ext = "html"
+            elif "css" in lang or "style" in code[:50].lower(): ext = "css"
+            elif "py" in lang or "import" in code[:50]: ext = "py"
+            elif "js" in lang or "script" in code[:50]: ext = "js"
+            else: ext = lang if lang else "txt"
             
-            filename = f"Pardhan_Project_{i+1}.{ext}"
-            caption_box = (
-                f"┏━━━━━━━━━━━━━━━━━━━━┓\n"
-                f"┃    📂 **PARDHAN FILE** ┃\n"
-                f"┗━━━━━━━━━━━━━━━━━━━━┛\n"
-                f"File: `{filename}`\n"
-                f"Developer: @beast_harry"
-            )
+            filename = f"Pardhan_Source_{i+1}.{ext}"
             
             bio = io.BytesIO(code.encode('utf-8'))
             bio.name = filename
-            safe_send(chat_id, caption_box, bio=bio)
+            safe_send(chat_id, "", bio=bio, filename=filename)
         return True
     return False
 
@@ -102,10 +104,9 @@ def extract_and_send_code(chat_id, text):
 @bot.message_handler(commands=['start'])
 def welcome(message):
     name = message.from_user.first_name
-    # Yahan underscore ko escape kiya gaya hai taaki crash na ho
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃       ⚡ **BABA GPT v5.2** ⚡       ┃\n"
+        f"┃       ⚡ **BABA GPT v5.3** ⚡       ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
         f"Welcome, **{name}**! I am BABA GPT, an elite artificial intelligence designed for precision and power.\n\n"
         f"🚀 **Core Specialities:**\n"
@@ -113,7 +114,7 @@ def welcome(message):
         f"• **Instant Architecture:** Rapid generation of structured code.\n"
         f"• **Full-Stack Knowledge:** Mastery over modern tech stacks.\n"
         f"• **Adaptive Intelligence:** Evolving with every interaction.\n\n"
-        f"┃ Developer: @beast\_harry ┃\n"
+        f"┃ Developer: @beast_harry ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     safe_send(message.chat.id, design)
@@ -126,31 +127,25 @@ def clear(message):
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    
-    # 🔍 Lens Emoji Search status
     status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching...**", parse_mode="Markdown")
     
     response = get_groq_response(message.from_user.id, message.text)
     
     if response == "exhausted":
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Try again in a minute.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Service Busy:** Please try again in a minute.")
         return
     elif response is None:
-        safe_edit(message.chat.id, status_msg.message_id, "❌ **Connection Error:** Something went wrong.")
+        safe_edit(message.chat.id, status_msg.message_id, "❌ **Connection Error:** Groq API didn't respond.")
         return
 
-    # Check for Code & Files
     if not extract_and_send_code(message.chat.id, response):
-        # Agar sirf text hai toh safely edit karo
         safe_edit(message.chat.id, status_msg.message_id, response)
     else:
-        # Agar code bhej diya hai toh status delete kar do
         bot.delete_message(message.chat.id, status_msg.message_id)
 
 @app.route('/')
 def home(): return "BABA_GPT_ONLINE"
 
 if __name__ == "__main__":
-    print("✅ BABA GPT is waking up...")
     Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))).start()
     bot.infinity_polling()
