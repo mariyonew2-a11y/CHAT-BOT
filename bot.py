@@ -1,13 +1,13 @@
 import telebot
 import os
-import requests
-import io
+import time
 import re
+import io
+import requests
 from flask import Flask
 from threading import Thread
-from duckduckgo_search import DDGS # Real-time search ke liye
 
-# --- [ CONFIGURATION ] ---
+# --- [ SAMBANOVA CONFIG ] ---
 SAMBA_KEY = "7bd1589a-96fc-4fe4-811b-e1e42ba2098c"
 BASE_URL = "https://api.sambanova.ai/v1/chat/completions"
 SELECTED_MODEL = "Meta-Llama-3.3-70B-Instruct"
@@ -16,18 +16,21 @@ BOT_TOKEN = "8693996706:AAFhDMaiIPwps8woQvHSuQUpALSn5VsAR9Q"
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask('')
 
-# --- [ WEB SEARCH LOGIC ] ---
+# --- [ WEB SEARCH LOGIC - UPDATED ] ---
 def fetch_realtime_data(query):
     try:
+        from ddgs import DDGS # Naya package name
         with DDGS() as ddgs:
+            # Search result generator ko list mein convert kar rahe hain
             results = [r['body'] for r in ddgs.text(query, max_results=3)]
             return "\n".join(results)
-    except:
-        return "No real-time data found."
+    except Exception as e:
+        print(f"Search Skip: {str(e)}")
+        return "" # Agar search fail ho toh empty string bhejo taaki AI crash na ho
 
-# --- [ AI ENGINE - SEARCH ENABLED ] ---
-def get_samba_response(user_input):
-    # 1. Pehle internet par search karte hain
+# --- [ AI ENGINE ] ---
+def get_groq_response(user_id, user_input):
+    # Internet data uthao
     web_data = fetch_realtime_data(user_input)
     
     headers = {
@@ -35,14 +38,15 @@ def get_samba_response(user_input):
         "Content-Type": "application/json"
     }
     
-    # 2. AI ko Internet ka "Context" dete hain
+    # Prompt mein internet data tabhi dalo jab kuch mila ho
+    system_prompt = "You are BABA GPT by @beast_harry. Provide top-tier logic and code."
+    if web_data:
+        system_prompt += f" Use this real-time info if needed: {web_data}"
+
     payload = {
         "model": SELECTED_MODEL, 
         "messages": [
-            {
-                "role": "system", 
-                "content": f"You are BABA GPT by @beast_harry. Use the following REAL-TIME INTERNET DATA to answer if needed: {web_data}"
-            },
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_input}
         ],
         "temperature": 0.6,
@@ -59,7 +63,7 @@ def get_samba_response(user_input):
     except Exception as e:
         return None
 
-# --- [ STEP 3: CODE TO FILE LOGIC - AS IT IS ] ---
+# --- [ STEP 3: CODE TO FILE LOGIC - EXACT SAME ] ---
 def extract_and_send_code(chat_id, text):
     code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
     if code_blocks:
@@ -83,19 +87,19 @@ def extract_and_send_code(chat_id, text):
         return True
     return False
 
-# --- [ HANDLERS - EXACTLY SAME ] ---
+# --- [ STEP 1: START COMMAND DESIGN ] ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃        ⚡ **BABA GPT v6.5** ⚡        ┃\n"
+        f"┃        ⚡ **BABA GPT v5.0** ⚡        ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Greetings, **{name}**! I am BABA GPT, now with **Real-Time Internet Access**.\n\n"
-        f"I have been engineered by **@beast\_harry** to provide you with elite intelligence.\n\n"
+        f"Greetings, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
+        f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence.\n\n"
         f"🚀 **Core Intelligence:**\n"
-        f"• **Live Search:** Access to 2026 current affairs.\n"
-        f"• **Instant Code:** Flawless scripts into files.\n"
+        f"• **Live Search:** Enabled for real-time answers.\n"
+        f"• **Instant Code:** Delivers downloadable files.\n"
         f"• **SambaNova Power:** Zero downtime performance.\n\n"
         f"┃ *Developed with passion by @beast\_harry* ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -105,15 +109,16 @@ def welcome(message):
     except:
         bot.reply_to(message, design)
 
+# --- [ STEP 2: PROCESSING & ERROR HANDLING ] ---
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Searching the Web...**", parse_mode="Markdown")
+    status_msg = bot.reply_to(message, "🔄 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
-    response = get_samba_response(message.text)
+    response = get_groq_response(message.from_user.id, message.text)
     
     if response is None:
-        bot.edit_message_text("❌ **Something went wrong.**", message.chat.id, status_msg.message_id)
+        bot.edit_message_text("❌ **Something went wrong.** Try again.", message.chat.id, status_msg.message_id)
         return
 
     if not extract_and_send_code(message.chat.id, response):
@@ -124,6 +129,7 @@ def handle_chat(message):
     else:
         bot.delete_message(message.chat.id, status_msg.message_id)
 
+# --- [ SERVER LOGIC ] ---
 @app.route('/')
 def home(): return "BABA_GPT_ONLINE"
 
