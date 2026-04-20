@@ -11,7 +11,7 @@ from threading import Thread
 # --- [ DUAL CONFIGURATION ] ---
 # Harry bhai, dono keys yahan dalo. Agar koi ek nahi hai toh use khali "" chorr do.
 GEMINI_KEY = "AIzaSyAfcad38XcDdF1ZDMVo07RPICg5sJkqfN0"
-SAMBA_KEY = ""
+SAMBA_KEY = "7bd1589a-96fc-4fe4-811b-e1e42ba2098c"
 
 # SambaNova Config
 SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
