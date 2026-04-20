@@ -1,4 +1,4 @@
 pyTelegramBotAPI
 requests
 flask
-duckduckgo-search
+google-generativeai
