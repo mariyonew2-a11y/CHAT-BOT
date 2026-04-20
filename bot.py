@@ -11,7 +11,7 @@ from threading import Thread
 # --- [ DUAL CONFIGURATION ] ---
 # Harry bhai, dono keys yahan dalo. Agar koi ek nahi hai toh use khali "" chorr do.
 GEMINI_KEY = "AIzaSyAfcad38XcDdF1ZDMVo07RPICg5sJkqfN0"
-SAMBA_KEY = "e15244fc-ca6f-449e-99a1-49e119ceccca"
+SAMBA_KEY = ""
 
 # SambaNova Config
 SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
@@ -92,7 +92,7 @@ def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃        ⚡ **BABA GPT v7.0** ⚡        ┃\n"
+        f"┃        ⚡ **BABA GPT** ⚡        ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
         f"Greetings, **{name}**! I am BABA GPT Hybrid.\n\n"
         f"I am powered by **Dual Engines** (Gemini + SambaNova) for 100% uptime.\n\n"
@@ -100,7 +100,6 @@ def welcome(message):
         f"• **Hybrid Failover:** Always active logic.\n"
         f"• **Code Extraction:** Auto-file delivery.\n"
         f"• **Zero Memory:** Maximum token efficiency.\n\n"
-        f"┃ *Developed with passion by @beast\_harry* ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     try:
@@ -112,7 +111,7 @@ def welcome(message):
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    status_msg = bot.reply_to(message, "🔄 **BABA GPT is Thinking...**", parse_mode="Markdown")
+    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
     response = get_ai_response(message.text)
     
