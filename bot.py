@@ -3,135 +3,133 @@ import os
 import time
 import re
 import io
-import requests
-import google.generativeai as genai
+import requests # SambaNova ke liye
 from flask import Flask
 from threading import Thread
 
-# --- [ DUAL CONFIGURATION ] ---
-# Harry bhai, dono keys yahan dalo. Agar koi ek nahi hai toh use khali "" chorr do.
-GEMINI_KEY = "AIzaSyAfcad38XcDdF1ZDMVo07RPICg5sJkqfN0"
-SAMBA_KEY = "7bd1589a-96fc-4fe4-811b-e1e42ba2098c"
-
-# SambaNova Config
-SAMBA_URL = "https://api.sambanova.ai/v1/chat/completions"
-SAMBA_MODEL = "Meta-Llama-3.3-70B-Instruct"
-
-# Gemini Config
-if GEMINI_KEY:
-    genai.configure(api_key=GEMINI_KEY)
-    gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+# --- [ SINGLE API CONFIG ] ---
+# Harry bhai, apni SambaNova key yahan dalo
+SAMBA_KEY = "e15244fc-ca6f-449e-99a1-49e119ceccca"
+BASE_URL = "https://api.sambanova.ai/v1/chat/completions"
+SELECTED_MODEL = "Meta-Llama-3.3-70B-Instruct"
 
 BOT_TOKEN = "8693996706:AAFhDMaiIPwps8woQvHSuQUpALSn5VsAR9Q"
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask('')
 
-# --- [ HYBRID AI ENGINE ] ---
-def get_ai_response(user_input):
-    # System Instruction
-    sys_msg = "You are BABA GPT by @beast_harry. Provide elite coding logic and files."
+# --- [ AI ENGINE - ZERO MEMORY ] ---
+def get_groq_response(user_id, user_input):
+    # Memory logic hata di gayi hai - Sirf current input jayega
+    headers = {
+        "Authorization": f"Bearer {SAMBA_KEY}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": SELECTED_MODEL, 
+        "messages": [
+            {"role": "system", "content": "You are BABA GPT, a world-class AI developed by @beast_harry. You provide top-tier logic and code."},
+            {"role": "user", "content": user_input}
+        ],
+        "temperature": 0.6,
+        "max_tokens": 4000
+    }
 
-    # 1. PEHLE GEMINI TRY KARTE HAIN
-    if GEMINI_KEY:
-        try:
-            prompt = f"System: {sys_msg}\nUser: {user_input}"
-            response = gemini_model.generate_content(prompt)
-            if response and response.text:
-                return response.text
-        except Exception as e:
-            print(f"Gemini Skip: {e}")
+    try:
+        response = requests.post(BASE_URL, headers=headers, json=payload, timeout=40)
+        res_data = response.json()
+        if response.status_code == 200:
+            return res_data['choices'][0]['message']['content']
+        else:
+            return None
+    except Exception as e:
+        return None
 
-    # 2. AGAR GEMINI FAIL HUA TO SAMBANOVA TRY KARTE HAIN
-    if SAMBA_KEY:
-        try:
-            headers = {"Authorization": f"Bearer {SAMBA_KEY}", "Content-Type": "application/json"}
-            payload = {
-                "model": SAMBA_MODEL,
-                "messages": [
-                    {"role": "system", "content": sys_msg},
-                    {"role": "user", "content": user_input}
-                ],
-                "temperature": 0.6
-            }
-            res = requests.post(SAMBA_URL, headers=headers, json=payload, timeout=30)
-            if res.status_code == 200:
-                return res.json()['choices'][0]['message']['content']
-        except Exception as e:
-            print(f"SambaNova Skip: {e}")
-
-    return None
-
-# --- [ CODE TO FILE LOGIC - AS IT IS ] ---
+# --- [ STEP 3: CODE TO FILE LOGIC ] ---
 def extract_and_send_code(chat_id, text):
+    # Regex to find all code blocks
     code_blocks = re.findall(r'```(\w+)?\n([\s\S]*?)```', text)
+    
     if code_blocks:
+        # Code ke alawa jo text bacha hai wo bhej do
         clean_text = re.sub(r'```[\s\S]*?```', '', text).strip()
         if clean_text:
-            try:
-                bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
-            except:
-                bot.send_message(chat_id, f"🤖 BABA GPT Response:\n\n{clean_text}")
+            bot.send_message(chat_id, f"🤖 **BABA GPT Response:**\n\n{clean_text}", parse_mode="Markdown")
         
         for i, (lang, code) in enumerate(code_blocks):
+            # File extension check
             ext = lang if lang else "txt"
             if "html" in ext.lower(): ext = "html"
             elif "python" in ext.lower() or "py" in ext.lower(): ext = "py"
             elif "c" == ext.lower(): ext = "c"
             
             filename = f"BABA_GPT_Project_{i+1}.{ext}"
+            
+            # File buffer creation (No physical file saved on Render)
             bio = io.BytesIO(code.encode('utf-8'))
             bio.name = filename
-            # Escape underscore for @beast_harry
+            # Note: underscore ko escape kiya hai taaki crash na ho (\_)
             bot.send_document(chat_id, bio, caption=f"📄 **Project File:** `{filename}`\n⚡ *Created by @beast\_harry*")
         return True
     return False
 
-# --- [ START COMMAND ] ---
+# --- [ STEP 1: START COMMAND DESIGN ] ---
 @bot.message_handler(commands=['start'])
 def welcome(message):
     name = message.from_user.first_name
     design = (
         f"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n"
-        f"┃        ⚡ **BABA GPT** ⚡        ┃\n"
+        f"┃        ⚡ **BABA GPT v5.0** ⚡        ┃\n"
         f"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n\n"
-        f"Greetings, **{name}**! I am BABA GPT Hybrid.\n\n"
-        f"I am powered by **Dual Engines** (Gemini + SambaNova) for 100% uptime.\n\n"
-        f"🚀 **Features:**\n"
-        f"• **Hybrid Failover:** Always active logic.\n"
-        f"• **Code Extraction:** Auto-file delivery.\n"
-        f"• **Zero Memory:** Maximum token efficiency.\n\n"
+        f"Greetings, **{name}**! I am BABA GPT, your high-performance AI companion.\n\n"
+        f"I have been engineered by **@beast\_harry** to provide you with elite-level intelligence and flawless automation.\n\n"
+        f"🚀 **Core Intelligence:**\n"
+        f"• **Advanced Logic:** Capable of solving high-level problems.\n"
+        f"• **Instant Code:** Delivers error-free scripts as downloadable files.\n"
+        f"• **System Mastery:** Deep understanding of Python, C, and Web Arch.\n"
+        f"• **Speed Optimized:** Powered by SambaNova for zero downtime.\n\n"
+        f"┃ *Developed with passion by @beast\_harry* ┃\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     )
-    try:
-        bot.reply_to(message, design, parse_mode="Markdown")
-    except:
-        bot.reply_to(message, design)
+    bot.reply_to(message, design, parse_mode="Markdown")
 
-# --- [ CHAT HANDLER ] ---
+@bot.message_handler(commands=['clear'])
+def clear(message):
+    bot.reply_to(message, "🗑️ **Memory Wiped.** Fresh session started.")
+
+# --- [ STEP 2: PROCESSING & ERROR HANDLING ] ---
 @bot.message_handler(func=lambda m: True)
 def handle_chat(message):
     bot.send_chat_action(message.chat.id, 'typing')
-    status_msg = bot.reply_to(message, "🔍 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
-    response = get_ai_response(message.text)
+    # Thinking with Buffer Animation
+    status_msg = bot.reply_to(message, "🔄 **BABA GPT is Thinking...**", parse_mode="Markdown")
     
-    if response is None:
-        bot.edit_message_text("❌ **Dono APIs fail ho gayi.** Keys check karo Harry bhai.", message.chat.id, status_msg.message_id)
+    response = get_groq_response(message.from_user.id, message.text)
+    
+    if response == "exhausted":
+        bot.edit_message_text("⚠️ **System Error:** All circuits busy. Try again later.", message.chat.id, status_msg.message_id)
+        return
+    elif response is None:
+        bot.edit_message_text("❌ **Something went wrong.** Please check your prompt.", message.chat.id, status_msg.message_id)
         return
 
+    # Check and Send File if Code exists
     if not extract_and_send_code(message.chat.id, response):
+        # Normal Text Response (if no code found)
         try:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id, parse_mode="Markdown")
         except:
             bot.edit_message_text(response, message.chat.id, status_msg.message_id)
     else:
+        # Code bhej diya gaya hai, thinking message hata do
         bot.delete_message(message.chat.id, status_msg.message_id)
 
 # --- [ SERVER LOGIC ] ---
 @app.route('/')
-def home(): return "BABA_GPT_HYBRID_ONLINE"
+def home(): return "BABA_GPT_ONLINE"
 
 if __name__ == "__main__":
-    print("✅ BABA GPT v7.0 Hybrid is Waking Up...")
+    print("✅ BABA GPT is waking up...")
     Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080)))).start()
     bot.infinity_polling()
